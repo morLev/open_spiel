@@ -24,6 +24,7 @@ import pyspiel
 # Specify game names in alphabetical order, to make the test easier to read.
 EXPECTED_GAMES = frozenset([
     "2048",
+    "add_noise",
     "amazons",
     "backgammon",
     "bargaining",
@@ -102,6 +103,7 @@ EXPECTED_GAMES = frozenset([
     "phantom_ttt",
     "phantom_ttt_ir",
     "pig",
+    "python_block_dominoes",
     "python_dynamic_routing",
     "python_iterated_prisoners_dilemma",
     "python_mfg_crowd_modelling",
@@ -128,7 +130,7 @@ EXPECTED_GAMES = frozenset([
     "turn_based_simultaneous_game",
     "ultimate_tic_tac_toe",
     "y",
-    "python_domino",
+    "zerosum",
 ])
 
 
@@ -159,6 +161,7 @@ class PyspielTest(absltest.TestCase):
     expected = [
         # Being non-default-loadable prevents various automated tests.
         # Only add games here if there is no sensible default for a parameter.
+        "add_noise",
         "efg_game",
         "nfg_game",
         "misere",
@@ -167,6 +170,7 @@ class PyspielTest(absltest.TestCase):
         "repeated_game",
         "restricted_nash_response",
         "start_at",
+        "zerosum",
     ]
     self.assertCountEqual(non_default_loadable, expected)
 
