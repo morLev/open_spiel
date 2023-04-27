@@ -19,7 +19,6 @@ https://en.wikipedia.org/wiki/Dominoes#Blocking_game
 """
 
 import copy
-import itertools
 
 import numpy as np
 
@@ -27,8 +26,30 @@ import pyspiel
 
 _NUM_PLAYERS = 2
 _PIPS = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
-_DECK = list(itertools.combinations_with_replacement(_PIPS, 2))
+# The first player to play is the one holding the highest rank tile.
+# The rank of tiles is the following:
+#   1. Highest double.
+#   2. If none of the players hold a double, then highest weight.
+#   3. If the highest weighted tile of both players has the same weight
+#      then the highest single edge of the highest weighted tile.
+
+# full deck sorted by rank:
+_DECK = [(6., 6.), (5., 5.), (4., 4.), (3., 3.), (2., 2.), (1., 1.), (0., 0.),
+         (5., 6.),
+         (4., 6.),
+         (3., 6.), (4., 5.),
+         (2., 6.), (3., 5.),
+         (1., 6.), (2., 5.), (3., 4.),
+         (0., 6.), (1., 5.), (2., 4.),
+         (0., 5.), (1., 4.), (2., 3.),
+         (0., 4.), (1., 3.),
+         (0., 3.), (1., 2.),
+         (0., 2.),
+         (0., 1.)]
+
 _EDGES = [None, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+
+_POINTS_FOR_DOMINO = 10.
 
 
 class Action:
@@ -196,6 +217,7 @@ class BlockDominoesState(pyspiel.State):
     p = 1.0 / len(self.deck)
     return [(_DECK.index(i), p) for i in self.deck]
 
+
   def _apply_action(self, action):
     """Applies the specified action to the state."""
     if self.is_chance_node():
@@ -208,6 +230,12 @@ class BlockDominoesState(pyspiel.State):
 
       if not len(self.hands[0]) == len(self.hands[1]) == _HAND_SIZE:
         return  # another tiles to deal
+
+      # check which hand is playing first, and assigned it to player 0
+      hand0_starting_value = min(map(_DECK.index, self.hands[0]))
+      hand1_starting_value = min(map(_DECK.index, self.hands[1]))
+      if hand0_starting_value > hand1_starting_value:
+        self.hands[0], self.hands[1] = self.hands[1], self.hands[0]
 
       for hand in self.hands:
         hand.sort()
@@ -270,14 +298,25 @@ class BlockDominoesState(pyspiel.State):
     if not self.is_terminal():
       return [0, 0]
 
-    sum_of_pips0 = sum(t[0] + t[1] for t in self.hands[0])
-    sum_of_pips1 = sum(t[0] + t[1] for t in self.hands[1])
+     sum_of_pips = [sum(t[0] + t[1] for t in self.hands[0]), sum(t[0] + t[1] for t in self.hands[1])]
 
-    if sum_of_pips1 == sum_of_pips0:
+    if sum_of_pips[0] == sum_of_pips[1]:
       return [0, 0]
 
-    if sum_of_pips1 > sum_of_pips0:
-      return [sum_of_pips1, -sum_of_pips1]
+    if sum_of_pips[1] > sum_of_pips[0]:
+      winner_id = 0
+    else:
+      winner_id = 1
+
+    if len(self.hands[winner_id]) == 0:
+
+
+
+
+
+
+
+
     return [-sum_of_pips0, sum_of_pips0]
 
   def __str__(self):
