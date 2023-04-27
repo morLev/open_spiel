@@ -122,8 +122,14 @@ class BlockDominoesState(pyspiel.State):
     self.deck = copy.deepcopy(_DECK)
     self._game_over = False
     self._next_player = pyspiel.PlayerId.CHANCE
+    self.blocked_pips = [[False] * len(_PIPS), [False] * len(_PIPS)]
 
-  # OpenSpiel (PySpiel) API functions are below. This is the standard set that
+
+  def get_other_edge(self, edge):
+    assert len(self.open_edges) != 0
+    i = self.open_edges.index(edge)
+    return self.open_edges[1-i]
+    # OpenSpiel (PySpiel) API functions are below. This is the standard set that
   # should be implemented by every sequential-move game with chance.
 
   def current_player(self):
@@ -139,6 +145,28 @@ class BlockDominoesState(pyspiel.State):
     assert player >= 0
     assert player == self._next_player
     return self.get_legal_actions(player)
+
+  def get_legal_actions_helper(self, player):
+    """Returns a list of legal actions."""
+    assert player >= 0
+
+    actions = []
+    hand = self.hands[player]
+
+    # first move, no open edges
+    if not self.open_edges:
+      for tile in hand:
+        actions.append(Action(player, tile, None))
+    else:
+      for tile in hand:
+        if tile[0] in self.open_edges:
+          actions.append(Action(player, tile, tile[0]))
+        if tile[0] != tile[1] and tile[1] in self.open_edges:
+          actions.append(Action(player, tile, tile[1]))
+
+    return actions
+
+
 
   def get_legal_actions(self, player):
     """Returns a list of legal actions."""
@@ -204,6 +232,9 @@ class BlockDominoesState(pyspiel.State):
         self._next_player = opp_idx
         return
 
+      for i in self.open_edges:
+        self.blocked_pips[opp_idx][int(i)] = True
+
       my_legal_actions = self.get_legal_actions(my_idx)
       if my_legal_actions:
         self._next_player = my_idx
@@ -266,28 +297,12 @@ class BlockDominoesObserver:
       raise ValueError(f"Observation parameters not supported; passed {params}")
 
     # Determine which observation pieces we want to include.
-    pieces = [("player", 2, (2,))]
-
-    if iig_obs_type.private_info == pyspiel.PrivateInfoType.SINGLE_PLAYER:
-      # each tile is represented using 3 integers:
-      # 2 for the pips, and 1 to distinguish between (0,0) to empty slot for
-      # a tile.
-      pieces.append(("hand", 21, (7, 3)))
-
-    if iig_obs_type.public_info:
-      if iig_obs_type.perfect_recall:
-        # list of all played actions, each action is represented using 5
-        # integers:
-        # 2 for the played tile (0-6), 1 for the covered edge (0-6),
-        # 1 for which player (0/1), 1 to distinguish between actual move and
-        # empty slot for a move (0/1).
-        # the None (play on an empty board) edge represented using 0.
-        pieces.append(("actions_history", 70, (14, 5)))
-      else:
-        # last action, represented in the same way as in "actions_history"
-        # but without the last integer.
-        pieces.append(("last_action", 4, (4,)))
-        pieces.append(("hand_sizes", 2, (2,)))
+    pieces = [("player", 2, (2,)),
+              ("count_unseen_pips", 7, (7,)),
+              ("hand", 21, (7, 3)),
+              ("hand_sizes", 2, (2,)),
+              ("actions", 35, (7, 5)),
+              ("edges", 3, (3,))]
 
     # Build the single flat tensor.
     total_size = sum(size for name, size, shape in pieces)
@@ -309,45 +324,60 @@ class BlockDominoesObserver:
       self.dict["player"][player] = 1
       self.dict["player"][1 - player] = 0
 
+
+      if "count_unseen_pips" in self.dict:
+        pips = [7.] * 7
+        for action in state.actions_history:
+          pips[int(action.tile[0])] -=1.
+          if action.tile[0] != action.tile[1]: # double only count ones
+            pips[int(action.tile[1])] -=1.
+
+        for tile in state.hands[player]:
+          pips[int(tile[0])] -=1.
+          if tile[0] != tile[1]: # double only count ones
+            pips[int(tile[1])] -=1.
+
+        # todo: consider blocks
+
+        self.dict["count_unseen_pips"] = np.array(pips)
+
     if "hand_sizes" in self.dict:
       my_hand_size = len(state.hands[player])
       opp_hand_size = len(state.hands[1 - player])
-      self.dict["hand_sizes"][0] = my_hand_size
-      self.dict["hand_sizes"][1] = opp_hand_size
+      self.dict["hand_sizes"][0] = my_hand_size/7.
+      self.dict["hand_sizes"][1] = opp_hand_size/7.
 
     if "edges" in self.dict:
       if state.open_edges:
-        self.dict["edges"][0] = state.open_edges[0]
-        self.dict["edges"][1] = state.open_edges[1]
+        self.dict["edges"][0] = state.open_edges[0]/6.
+        self.dict["edges"][1] = state.open_edges[1]/6.
+        self.dict["edges"][2] = 1.
       else:
         self.dict["edges"][0] = 0.0
         self.dict["edges"][1] = 0.0
+        self.dict["edges"][2] = 0.0
+
 
     if "hand" in self.dict:
       for i, tile in enumerate(state.hands[player]):
-        self.dict["hand"][i][0] = tile[0]
-        self.dict["hand"][i][1] = tile[1]
+        self.dict["hand"][i][0] = tile[0]/6.
+        self.dict["hand"][i][1] = tile[1]/6.
         self.dict["hand"][i][2] = 1.0
 
-    if "actions_history" in self.dict:
-      for i, action in enumerate(state.actions_history):
-        self.dict["actions_history"][i][0] = action.tile[0]
-        self.dict["actions_history"][i][1] = action.tile[1]
-        self.dict["actions_history"][i][2] = (
-            action.edge if action.edge is not None else 0.0
-        )
-        self.dict["actions_history"][i][3] = action.player
-        self.dict["actions_history"][i][4] = 1.0
+    if "actions" in self.dict:
+      for i, action in enumerate(state.get_legal_actions_helper(player)):
+        self.dict["actions"][i][0] = action.tile[0]/6.
+        self.dict["actions"][i][1] = action.tile[1]/6.
 
-    if "last_action" in self.dict:
-      if state.actions_history:
-        action = state.actions_history[-1]
-        self.dict["last_action"][0] = action.tile[0]
-        self.dict["last_action"][1] = action.tile[1]
-        self.dict["last_action"][2] = (
-            action.edge if action.edge is not None else 0.0
-        )
-        self.dict["last_action"][3] = action.player
+        if action.edge is None:
+          self.dict["actions"][i][2] = action.tile[0]/6. # first action in game, open edges after the action are the played tile pips
+          self.dict["actions"][i][3] = action.tile[1]/6.
+        else:
+          self.dict["actions"][i][2] = action.tile[1]/6. if action.tile[0] == action.edge else action.tile[0]/6.
+          self.dict["actions"][i][3] = state.get_other_edge(action.edge)/6. if action.edge is not None else 0.0
+
+        self.dict["actions"][i][4] = 1.0 # possible action
+
 
   def string_from(self, state, player):
     """Observation of `state` from the PoV of `player`, as a string."""
