@@ -298,26 +298,20 @@ class BlockDominoesState(pyspiel.State):
     if not self.is_terminal():
       return [0, 0]
 
-     sum_of_pips = [sum(t[0] + t[1] for t in self.hands[0]), sum(t[0] + t[1] for t in self.hands[1])]
+    sum_of_pips = [sum(t[0] + t[1] for t in self.hands[0]), sum(t[0] + t[1] for t in self.hands[1])]
 
-    if sum_of_pips[0] == sum_of_pips[1]:
+    if sum_of_pips[0] == sum_of_pips[1]: # todo: verify that empty hand against hand with only (0,0) is tie
       return [0, 0]
 
     if sum_of_pips[1] > sum_of_pips[0]:
       winner_id = 0
     else:
       winner_id = 1
-
+    winner_points = sum_of_pips[1-winner_id]
     if len(self.hands[winner_id]) == 0:
+      winner_points += _POINTS_FOR_DOMINO
 
-
-
-
-
-
-
-
-    return [-sum_of_pips0, sum_of_pips0]
+    return [winner_points, -winner_points] if winner_id == 0 else [-winner_points, winner_points]
 
   def __str__(self):
     """String for debug purposes. No particular semantics are required."""
