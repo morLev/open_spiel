@@ -21,6 +21,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
+import time
 
 from open_spiel.python import policy
 from open_spiel.python.algorithms import deep_cfr_tf2
@@ -40,9 +41,9 @@ flags.DEFINE_string("game_name", "python_block_dominoes", "Name of the game")
 def main(unused_argv):
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
+  start_time = time.perf_counter()
 
-  time = datetime.datetime.now()
-  root_file = f"/home/mor/Desktop/DEV/open_spiel/open_spiel/algo_results/{time}"
+  root_file = f"/home/mor/Desktop/DEV/open_spiel/open_spiel/algo_results/{datetime.datetime.now()}"
 
   save_strategy_memories = f"{root_file}/strategy"
   save_advantage_networks = f"{root_file}/advantage"
@@ -107,6 +108,7 @@ def main(unused_argv):
 
   with open(f"{root_file}/bots_by_iterations_result.pkl", "wb") as f:
       pickle.dump(avg_lst, f)
+  print(f"experiment time: {time.perf_counter() - start_time:0.4f} seconds")
 
 def simulate_games(game, agents, games_num):
     returns_list = []

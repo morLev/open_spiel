@@ -138,6 +138,7 @@ class BlockDominoesState(pyspiel.State):
     """Constructor; should only be called by Game.new_initial_state."""
     super().__init__(game)
     self.actions_history = []
+    self.open_edges_history = []
     self.open_edges = []
     self.hands = [[], []]
     self.deck = copy.deepcopy(_DECK)
@@ -244,6 +245,7 @@ class BlockDominoesState(pyspiel.State):
     else:
       action = _ACTIONS[action]
       self.actions_history.append(action)
+      self.open_edges_history.append(self.open_edges)
       my_idx = self.current_player()
       my_hand = self.hands[my_idx]
       my_hand.remove(action.tile)
@@ -274,6 +276,7 @@ class BlockDominoesState(pyspiel.State):
     if not self.open_edges:
       self.open_edges = list(action.tile)
     else:
+      self.open_edges = copy.deepcopy(self.open_edges)
       self.open_edges.remove(action.edge)
       new_edge = (
           action.tile[0] if action.tile[0] != action.edge else action.tile[1]
@@ -357,22 +360,27 @@ class BlockDominoesObserver:
       self.dict["player"][player] = 1
       self.dict["player"][1 - player] = 0
 
+    if "count_unseen_pips" in self.dict:
+      pips = [7.] * 7
+      for action in state.actions_history:
+        pips[int(action.tile[0])] -=1.
+        if action.tile[0] != action.tile[1]: # double only count ones
+          pips[int(action.tile[1])] -=1.
 
-      if "count_unseen_pips" in self.dict:
-        pips = [7.] * 7
-        for action in state.actions_history:
-          pips[int(action.tile[0])] -=1.
-          if action.tile[0] != action.tile[1]: # double only count ones
-            pips[int(action.tile[1])] -=1.
+      for tile in state.hands[player]:
+        pips[int(tile[0])] -=1.
+        if tile[0] != tile[1]: # double only count ones
+          pips[int(tile[1])] -=1.
 
-        for tile in state.hands[player]:
-          pips[int(tile[0])] -=1.
-          if tile[0] != tile[1]: # double only count ones
-            pips[int(tile[1])] -=1.
+      i = 0
+      for first, second in zip(state.actions_history, state.actions_history[1:]):
+        if first.player == second.player:
+          edges = state.open_edges_history[i]
+          pips[int(edges[0])] = 0.
+          pips[int(edges[1])] = 0.
+        i+=1
 
-        # todo: consider blocks
-
-        self.dict["count_unseen_pips"] = np.array(pips)
+      self.dict["count_unseen_pips"] = np.array(pips)
 
     if "hand_sizes" in self.dict:
       my_hand_size = len(state.hands[player])
@@ -389,7 +397,6 @@ class BlockDominoesObserver:
         self.dict["edges"][0] = 0.0
         self.dict["edges"][1] = 0.0
         self.dict["edges"][2] = 0.0
-
 
     if "hand" in self.dict:
       for i, tile in enumerate(state.hands[player]):
