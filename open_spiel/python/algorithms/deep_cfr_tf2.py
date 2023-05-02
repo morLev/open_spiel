@@ -230,6 +230,11 @@ class AdvantageNetwork(tf.keras.Model):
         adv_network_layers[-1], kernel_initializer='he_normal')
 
     self.out_layer = tf.keras.layers.Dense(num_actions)
+    self.pip_embedding = tf.keras.layers.Embedding(7, 16)
+    self.tile_embedding = tf.keras.layers.Embedding(28, 16)
+    self.weight_embedding = tf.keras.layers.Embedding(13, 16)
+    self.action_embedding = tf.keras.layers.Embedding(152, 16)
+
 
   @tf.function
   def call(self, inputs):

@@ -33,12 +33,13 @@ import pyspiel
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("num_iterations", 1, "Number of iterations")
-flags.DEFINE_integer("num_traversals", 100, "Number of traversals/games")
+flags.DEFINE_integer("num_traversals", 3000, "Number of traversals/games")
 flags.DEFINE_string("game_name", "python_block_dominoes", "Name of the game")
 
 ####### current ############3
 
 def main(unused_argv):
+
   logging.info("Loading %s", FLAGS.game_name)
   game = pyspiel.load_game(FLAGS.game_name)
   start_time = time.perf_counter()
@@ -69,14 +70,14 @@ def main(unused_argv):
       num_iterations=FLAGS.num_iterations,
       num_traversals=FLAGS.num_traversals,
       learning_rate=1e-3,
-      batch_size_advantage=10,
-      batch_size_strategy=10,
-      memory_capacity=int(1e6),
-      policy_network_train_steps=200,
-      advantage_network_train_steps=200,
+      batch_size_advantage=20000,
+      batch_size_strategy=1,
+      memory_capacity=int(4e7),
+      policy_network_train_steps=1,
+      advantage_network_train_steps=1000,
       reinitialize_advantage_networks=True,
-      save_strategy_memories = save_strategy_memories,
-      save_advantage_networks = save_advantage_networks,
+      save_strategy_memories=save_strategy_memories,
+      save_advantage_networks=save_advantage_networks,
       infer_device="cpu",
       train_device="cpu")
 
