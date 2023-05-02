@@ -245,7 +245,8 @@ class BlockDominoesState(pyspiel.State):
     else:
       action = _ACTIONS[action]
       self.actions_history.append(action)
-      self.open_edges_history.append(self.open_edges)
+      if len(self.open_edges) != 0:
+        self.open_edges_history.append(self.open_edges)
       my_idx = self.current_player()
       my_hand = self.hands[my_idx]
       my_hand.remove(action.tile)
