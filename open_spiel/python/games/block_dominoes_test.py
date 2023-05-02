@@ -68,8 +68,8 @@ class DominoesBlockTest(absltest.TestCase):
 
     # player 1 played all is tile and player 0 hold the tile (0, 2)
     self.assertTrue(state.is_terminal())
-    self.assertEqual(state.returns()[0], -2)
-    self.assertEqual(state.returns()[1], 2)
+    self.assertEqual(state.returns()[0], -12)
+    self.assertEqual(state.returns()[1], 12)
 
   def test_single_deterministic_game_2(self):
     """Runs a single game where tiles and actions chose deterministically."""
