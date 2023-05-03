@@ -250,24 +250,24 @@ class AdvantageNetwork(tf.keras.Model):
 
 
 
-    player = x[:, 0:2]
-    count_unseen_pips = x[:, 2:9]
-    hand = x[:, 9:30]
-    hand_sizes = x[:, 30:32]
-    actions = x[:, 32:67]
-    edges = x[:, 67:70]
+    # player = x[:, 0:2]
+    # count_unseen_pips = x[:, 2:9]
+    # hand = x[:, 9:30]
+    # hand_sizes = x[:, 30:32]
+    # actions = x[:, 32:67]
+    # edges = x[:, 67:70]
 
 
-    tf.print("count_unseen_pips: ")
-    tf.print(count_unseen_pips,  summarize=-1)
-    tf.print("hand: ")
-    tf.print(hand,  summarize=-1)
-    tf.print("hand_sizes: ")
-    tf.print(hand_sizes,  summarize=-1)
-    tf.print("edges: ")
-    tf.print(edges,  summarize=-1)
-    tf.print("actions: ")
-    tf.print(actions, summarize=-1)
+    # tf.print("count_unseen_pips: ")
+    # tf.print(count_unseen_pips,  summarize=-1)
+    # tf.print("hand: ")
+    # tf.print(hand,  summarize=-1)
+    # tf.print("hand_sizes: ")
+    # tf.print(hand_sizes,  summarize=-1)
+    # tf.print("edges: ")
+    # tf.print(edges,  summarize=-1)
+    # tf.print("actions: ")
+    # tf.print(actions, summarize=-1)
 
     for layer in self.hidden:
       x = layer(x)

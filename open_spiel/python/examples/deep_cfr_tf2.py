@@ -36,8 +36,6 @@ flags.DEFINE_integer("num_iterations", 1, "Number of iterations")
 flags.DEFINE_integer("num_traversals", 3000, "Number of traversals/games")
 flags.DEFINE_string("game_name", "python_block_dominoes", "Name of the game")
 
-####### current ############3
-
 def main(unused_argv):
 
   logging.info("Loading %s", FLAGS.game_name)
@@ -53,11 +51,11 @@ def main(unused_argv):
   os.makedirs(save_advantage_networks)
   os.makedirs(save_lost)
 
- # TODO: why they use adam istead of SGD:
-      #  . We perform 4,000 mini-batch stochastic gradient descent (SGD) iterations using a batch size of 10,000 and perform parameter
-      # updates using the Adam optimizer (Kingma & Ba, 2014)
-      # with a learning rate of 0.001, with gradient norm clipping
-      # to 1. For HULH we use 32,000 SGD iterations and a batch
+  # TODO: why they use adam istead of SGD:
+  #  . We perform 4,000 mini-batch stochastic gradient descent (SGD) iterations using a batch size of 10,000 and perform parameter
+  # updates using the Adam optimizer (Kingma & Ba, 2014)
+  # with a learning rate of 0.001, with gradient norm clipping
+  # to 1. For HULH we use 32,000 SGD iterations and a batch
 
  # todo: dont the same net aritecture + our is why smaller
  # todo: memory_capacity=4e7, int the article he saying 4e7 infosets for each player
