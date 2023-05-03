@@ -44,8 +44,7 @@ def main(unused_argv):
   game = pyspiel.load_game(FLAGS.game_name)
   start_time = time.perf_counter()
 
-  root_file = f"/home/mor/Desktop/DEV/open_spiel/open_spiel/algo_results/{datetime.datetime.now()}"
-
+  root_file = f"/home/mor/PycharmProjects/open_spiel/algo_results/{datetime.datetime.now()}"
   save_strategy_memories = f"{root_file}/strategy"
   save_advantage_networks = f"{root_file}/advantage"
   save_lost = f"{root_file}/losses"
@@ -71,10 +70,10 @@ def main(unused_argv):
       num_traversals=FLAGS.num_traversals,
       learning_rate=1e-3,
       batch_size_advantage=20000,
-      batch_size_strategy=1,
+      batch_size_strategy=20000,
       memory_capacity=int(4e7),
-      policy_network_train_steps=1,
-      advantage_network_train_steps=1000,
+      policy_network_train_steps=20000,
+      advantage_network_train_steps=20000,
       reinitialize_advantage_networks=True,
       save_strategy_memories=save_strategy_memories,
       save_advantage_networks=save_advantage_networks,
@@ -82,7 +81,7 @@ def main(unused_argv):
       train_device="cpu")
 
   policies = []
-  for i in range(1):
+  for i in range(2):
       policy_net, advantage_losses, policy_loss = deep_cfr_solver.solve()
       deep_cfr_solver.save_policy_network(root_file + '/policy_network_iter' + str(i))
       policies.append(policy_net)
@@ -95,8 +94,8 @@ def main(unused_argv):
   for i in range(len(policies)):
       if i == len(policies)- 1:
           break
-      returns_list1 = simulate_games(game, [policies[i],policies[i+1]], 20)
-      returns_list2 = simulate_games(game, [policies[i+1],policies[i]], 20)
+      returns_list1 = simulate_games(game, [policies[i],policies[i+1]], 5000)
+      returns_list2 = simulate_games(game, [policies[i+1],policies[i]], 5000)
 
       logging.info( f"returns of {i} against {i+1}:\n"+ str(returns_list1))
       logging.info( f"returns of {i} against {i+1}:\n"+ str(returns_list2))
