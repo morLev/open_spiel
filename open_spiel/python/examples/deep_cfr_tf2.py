@@ -69,7 +69,7 @@ def main(unused_argv):
       learning_rate=1e-3,
       batch_size_advantage=20000,
       batch_size_strategy=20000,
-      memory_capacity=int(4e7),
+      memory_capacity=4000_000,
       policy_network_train_steps=20000,
       advantage_network_train_steps=20000,
       reinitialize_advantage_networks=True,
@@ -92,8 +92,8 @@ def main(unused_argv):
   for i in range(len(policies)):
       if i == len(policies)- 1:
           break
-      returns_list1 = simulate_games(game, [policies[i],policies[i+1]], 5000)
-      returns_list2 = simulate_games(game, [policies[i+1],policies[i]], 5000)
+      returns_list1 = simulate_games(game, [policies[i], policies[i+1]], 5000)
+      returns_list2 = simulate_games(game, [policies[i+1], policies[i]], 5000)
 
       logging.info( f"returns of {i} against {i+1}:\n"+ str(returns_list1))
       logging.info( f"returns of {i} against {i+1}:\n"+ str(returns_list2))
