@@ -27,6 +27,16 @@ class DominoesBlockTest(absltest.TestCase):
     game = pyspiel.load_game("python_block_dominoes")
     pyspiel.random_sim_test(game, num_sims=100, serialize=False, verbose=True)
 
+  def test_game_from_cc_6(self):
+    """Runs our standard game tests, checking API consistency."""
+    game = pyspiel.load_game("python_block_dominoes_6")
+    pyspiel.random_sim_test(game, num_sims=200, serialize=False, verbose=True)
+
+  def test_game_from_cc_10(self):
+    """Runs our standard game tests, checking API consistency."""
+    game = pyspiel.load_game("python_block_dominoes_10")
+    pyspiel.random_sim_test(game, num_sims=200, serialize=False, verbose=True)
+
   def test_single_deterministic_game_1(self):
     """Runs a single game where tiles and actions chose deterministically."""
     game = pyspiel.load_game("python_block_dominoes")
