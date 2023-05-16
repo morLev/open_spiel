@@ -34,6 +34,7 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 from absl import logging
 
 
@@ -45,6 +46,7 @@ import pyspiel
 # epoch within one training iteration
 ADVANTAGE_TRAIN_SHUFFLE_SIZE = 100000
 STRATEGY_TRAIN_SHUFFLE_SIZE = 1000000
+DIM = 256
 
 
 # TODO(author3) Refactor into data structures lib.
@@ -192,6 +194,77 @@ class PolicyNetwork(tf.keras.Model):
     return x
 
 
+class TileEmbedding(tf.keras.layers.Layer):
+  def __init__(self, dim):
+    super(TileEmbedding, self).__init__()
+    self.small_pip = tf.keras.layers.Embedding(7, dim)
+    self.high_pip = tf.keras.layers.Embedding(7, dim)
+    self.tile_idx = tf.keras.layers.Embedding(28, dim)
+    self.w = tf.keras.layers.Embedding(13, dim)
+
+  @tf.function
+  def call(self, p1, p2, idx, is_on):
+
+    emb = self.small_pip(p1) + self.high_pip(p2) + self.tile_idx(idx) + self.w(p1 + p2)
+    emb = tf.transpose(emb)
+    emb =tf.multiply(is_on, emb)
+    #tf.print(p1, p2,idx,is_on,emb, summarize=-1)
+
+    return emb
+
+
+class ActionTileEmbedding(tf.keras.layers.Layer):
+  def __init__(self, dim):
+    super(ActionTileEmbedding, self).__init__()
+    self.small_pip = tf.keras.layers.Embedding(7, dim)
+    self.high_pip = tf.keras.layers.Embedding(7, dim)
+    self.tile_idx = tf.keras.layers.Embedding(28, dim)
+    self.w = tf.keras.layers.Embedding(13, dim)
+
+  @tf.function
+  def call(self, p1, p2, idx):
+    emb = self.small_pip(p1) + self.high_pip(p2) + self.tile_idx(idx) + self.w(p1 + p2)
+    return emb
+
+
+
+class HandEmbedding(tf.keras.layers.Layer):
+  def __init__(self, dim, hand_size):
+    super(HandEmbedding, self).__init__()
+    self.hand_size = hand_size
+    self.tileEmb = TileEmbedding(dim)
+
+  @tf.function
+  def call(self, hand):
+    out = []
+    for i in range(self.hand_size):
+      t = hand[: , i*4: (i+1)*4]
+      out.append(self.tileEmb(t[:, 0], t[:, 1], t[:, 2], t[:, 3]))
+    sum_of_tiles = tf.keras.layers.add(out)
+    return sum_of_tiles
+
+
+class ActionEmbedding(tf.keras.layers.Layer):
+  def __init__(self, dim):
+    super(ActionEmbedding, self).__init__()
+    self.player_emb = tf.keras.layers.Embedding(2, dim)
+    self.tile_emb = ActionTileEmbedding(dim)
+    self.edge1_emb = tf.keras.layers.Embedding(7, dim)
+    self.edge2_emb = tf.keras.layers.Embedding(7, dim)
+    self.turn_emb = tf.keras.layers.Embedding(13, dim) # max of 13 actions before decision node
+
+  @tf.function
+  def call(self, action):
+    c = tf.keras.layers.Concatenate()([self.player_emb, self.tile_emb, self.edge1_emb, self.edge2_emb, self.turn_emb])
+    # emb = self.player_emb(action[:, 0:2]) + self.tile_emb(action[:, 2:3], action[:, 3:4], action[:, 4:5]) \
+    #       + self.edge1_emb(action[:, 4:5]) + self.edge2_emb(action[:, 5:6]) \
+    #       + self.turn_emb(action[:, 7:8])
+    emb = c(action)
+    #emb = tf.transpose(emb)
+    emb = tf.multiply(action[:, 8:9], emb)
+    return emb
+
+
 class AdvantageNetwork(tf.keras.Model):
   """Implements the advantage network as an MLP.
 
@@ -230,10 +303,10 @@ class AdvantageNetwork(tf.keras.Model):
         adv_network_layers[-1], kernel_initializer='he_normal')
 
     self.out_layer = tf.keras.layers.Dense(num_actions)
-    self.pip_embedding = tf.keras.layers.Embedding(7, 16)
-    self.tile_embedding = tf.keras.layers.Embedding(28, 16)
-    self.weight_embedding = tf.keras.layers.Embedding(13, 16)
-    self.action_embedding = tf.keras.layers.Embedding(152, 16)
+
+    self.hand_embedding = HandEmbedding(DIM, 7)
+    self.action_emb = ActionEmbedding(DIM)
+
 
 
   @tf.function
@@ -250,12 +323,15 @@ class AdvantageNetwork(tf.keras.Model):
 
 
 
-    # player = x[:, 0:2]
-    # count_unseen_pips = x[:, 2:9]
-    # hand = x[:, 9:30]
-    # hand_sizes = x[:, 30:32]
-    # actions = x[:, 32:67]
-    # edges = x[:, 67:70]
+    player = x[:, 0:2]
+    count_unseen_pips = x[:, 2:9]
+    hand = x[:, 2:30]
+    hand_sizes = x[:, 44:46]
+    actions = x[:, 1:(1 + 1386)]
+    edges = x[:, 81:84]
+
+
+    t = self.action_emb(actions[:, 1:9])
 
 
     # tf.print("count_unseen_pips: ")
@@ -736,6 +812,10 @@ class DeepCFRSolver(policy.Policy):
       data = self._get_advantage_dataset(player)
       for i, d in enumerate(data.take(self._advantage_network_train_steps)):
         main_loss = self._advantage_train_step[player](*d, tfit)
+
+
+        if i % 200 == 0 or i < 10:
+          logging.info(f"learn adv nn, iter={i}, loss={main_loss}")
         main_losses[i] = main_loss
 
     self._adv_networks[player].set_weights(
