@@ -22,7 +22,7 @@ import nox
 
 def get_distutils_tempdir():
   return (
-      f"temp.{sysconfig.get_platform()}-{sys.version_info[0]}.{sys.version_info[1]}"
+      f"temp.{sysconfig.get_platform()}-{sys.implementation.cache_tag}"
   )
 
 
